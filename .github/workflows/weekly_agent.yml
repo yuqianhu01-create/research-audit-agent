@@ -1,0 +1,57 @@
+name: Weekly Research Audit Agent
+
+on:
+  workflow_dispatch:
+    inputs:
+      section:
+        description: "Briefing section to search"
+        required: true
+        default: "all"
+        type: choice
+        options:
+          - all
+          - academic
+          - industry
+          - ai-aging
+          - ai-apps
+      limit:
+        description: "Maximum candidates"
+        required: true
+        default: "8"
+      minimum_per_section:
+        description: "Minimum passed records per section"
+        required: true
+        default: "5"
+  schedule:
+    # Monday 09:00 Beijing time = Monday 01:00 UTC
+    - cron: "0 1 * * 1"
+
+jobs:
+  run-agent:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Run Research Audit Publishing Pipeline
+        run: python scripts/run_pipeline.py --section "${{ github.event.inputs.section || 'all' }}" --initial-limit "${{ github.event.inputs.limit || '8' }}" --minimum-per-section "${{ github.event.inputs.minimum_per_section || '5' }}" --issue "next"
+
+      - name: Build Website Preview
+        run: python scripts/build_site.py
+
+      - name: Upload agent output
+        uses: actions/upload-artifact@v4
+        with:
+          name: agent-output
+          path: |
+            data/candidates.json
+            data/audit_report.json
+            data/website_candidates.json
+            data/published_registry.json
+            site/index.html
